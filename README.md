@@ -2,6 +2,8 @@
 
 A SwiftBar plugin that displays real-time tide information for UK coastal locations, with support for tide stations from tidetimes.org.uk.
 
+[![Tide Times SwiftBar Plugin](screenshot.png)](screenshot.png)
+
 ## Features
 
 - **Multi-location support**: Switch between any UK tide locations
@@ -16,12 +18,9 @@ A SwiftBar plugin that displays real-time tide information for UK coastal locati
 
 ## Installation
 
-1. **Place the plugin in your SwiftBar plugins directory:**
-   ```bash
-   cp tide-times-uk.30m.sh ~/.config/swiftbar/plugins/
-   chmod +x ~/.config/swiftbar/plugins/tide-times-uk.30m.sh
-   ```
-
+1. **Place the plugin in your SwiftBar plugins directory**:
+   - Download `tide-times.10s.sh` from this repository
+   - Move it to your SwiftBar plugins folder (e.g., `~/Library/Application Support/SwiftBar/Plugins/`)
 2. **Refresh SwiftBar** or restart it to pick up the new plugin
 
 3. **Click the plugin** in your menu bar to open the dropdown
