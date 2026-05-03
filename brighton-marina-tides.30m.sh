@@ -2,8 +2,92 @@
 # <xbar.title>Brighton Marina Tide Times</xbar.title>
 # <xbar.refreshTime>30m</xbar.refreshTime>
 # <xbar.desc>Shows today's tide times for Brighton Marina from tidetimes.org.uk</xbar.desc>
+# <swiftbar.hideAbout>true</swiftbar.hideAbout>
+# <swiftbar.hideRunInTerminal>true</swiftbar.hideRunInTerminal>
+# <swiftbar.hideLastUpdated>true</swiftbar.hideLastUpdated>
+# <swiftbar.hideDisablePlugin>true</swiftbar.hideDisablePlugin>
+# <swiftbar.hideSwiftBar>true</swiftbar.hideSwiftBar>
 
-RSS_URL="https://www.tidetimes.org.uk/brighton-marina-tide-times.rss"
+set -u
+
+DEFAULT_SLUG="brighton-marina"
+LOCATIONS_PAGE_URL="https://www.tidetimes.org.uk/uk-tides"
+BASE_URL="https://www.tidetimes.org.uk"
+PLUGIN_DIR="$(cd "$(dirname "$0")" && pwd)"
+CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/tide-times-swiftbar"
+SELECTED_FILE="$CONFIG_DIR/selected-location"
+LOCATIONS_FILE="$CONFIG_DIR/locations.tsv"
+
+mkdir -p "$CONFIG_DIR"
+
+parse_locations_stream() {
+  tr '\n' ' ' \
+    | grep -oE '<a href="/[^"]+-tide-times" title="[^"]+">[^<]+</a>' \
+    | sed -E 's#<a href="/([^"]+)-tide-times" title="[^"]+">([^<]+)</a>#\1\t\2#' \
+    | awk -F '\t' 'NF==2 && $1 != "" && $2 != "" { print $1 "\t" $2 }' \
+    | sort -u
+}
+
+build_locations_cache() {
+  local tmp_file
+  tmp_file=$(mktemp)
+
+  if curl -fsSL "$LOCATIONS_PAGE_URL" | parse_locations_stream > "$tmp_file" && [ -s "$tmp_file" ]; then
+    mv "$tmp_file" "$LOCATIONS_FILE"
+    return 0
+  fi
+
+  if [ -f "$PLUGIN_DIR/example-locations-snippet.html" ] \
+    && cat "$PLUGIN_DIR/example-locations-snippet.html" | parse_locations_stream > "$tmp_file" \
+    && [ -s "$tmp_file" ]; then
+    mv "$tmp_file" "$LOCATIONS_FILE"
+    return 0
+  fi
+
+  rm -f "$tmp_file"
+  return 1
+}
+
+case "${1:-}" in
+  --set-location)
+    if [ -n "${2:-}" ]; then
+      echo "$2" > "$SELECTED_FILE"
+    fi
+    exit 0
+    ;;
+  --refresh-locations)
+    rm -f "$LOCATIONS_FILE"
+    build_locations_cache >/dev/null 2>&1 || true
+    exit 0
+    ;;
+esac
+
+if [ ! -s "$LOCATIONS_FILE" ]; then
+  build_locations_cache >/dev/null 2>&1 || true
+fi
+
+selected_slug="$DEFAULT_SLUG"
+if [ -f "$SELECTED_FILE" ]; then
+  selected_slug=$(tr -d '\r\n' < "$SELECTED_FILE")
+fi
+
+if [ -s "$LOCATIONS_FILE" ]; then
+  selected_title=$(awk -F '\t' -v slug="$selected_slug" '$1 == slug { print $2; exit }' "$LOCATIONS_FILE")
+else
+  selected_title="Brighton Marina"
+fi
+
+if [ -z "${selected_title:-}" ] && [ -s "$LOCATIONS_FILE" ]; then
+  selected_slug=$(awk -F '\t' 'NR==1 { print $1; exit }' "$LOCATIONS_FILE")
+  selected_title=$(awk -F '\t' 'NR==1 { print $2; exit }' "$LOCATIONS_FILE")
+  echo "$selected_slug" > "$SELECTED_FILE"
+fi
+
+if [ -z "${selected_slug:-}" ]; then
+  selected_slug="$DEFAULT_SLUG"
+fi
+
+RSS_URL="$BASE_URL/$selected_slug-tide-times.rss"
 
 # Fetch the RSS feed
 data=$(curl -s "$RSS_URL")
@@ -68,5 +152,27 @@ echo "$upcoming_lines" | while IFS= read -r line; do
 done
 
 echo "---"
+echo "Location: ${selected_title:-Unknown}"
+echo "---"
+echo "Change Location"
+
+if [ -s "$LOCATIONS_FILE" ]; then
+  while IFS=$'\t' read -r slug title; do
+    [ -z "$slug" ] && continue
+    marker=""
+    if [ "$slug" = "$selected_slug" ]; then
+      marker="✓ "
+    fi
+    echo "${marker}${title} | bash=\"$0\" param1=--set-location param2=\"$slug\" terminal=false refresh=true"
+  done < "$LOCATIONS_FILE"
+else
+  echo "No locations available"
+fi
+
+echo "---"
+echo "Refresh Locations | bash=\"$0\" param1=--refresh-locations terminal=false refresh=true"
+echo "---"
 echo "Source: tidetimes.org.uk"
-echo "$RSS_URL"
+echo "$RSS_URL | href=$RSS_URL"
+echo "---"
+echo "Refresh | refresh=true"
