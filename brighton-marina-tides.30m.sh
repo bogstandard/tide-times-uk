@@ -37,13 +37,6 @@ build_locations_cache() {
     return 0
   fi
 
-  if [ -f "$PLUGIN_DIR/example-locations-snippet.html" ] \
-    && cat "$PLUGIN_DIR/example-locations-snippet.html" | parse_locations_stream > "$tmp_file" \
-    && [ -s "$tmp_file" ]; then
-    mv "$tmp_file" "$LOCATIONS_FILE"
-    return 0
-  fi
-
   rm -f "$tmp_file"
   return 1
 }
