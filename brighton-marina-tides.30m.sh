@@ -148,14 +148,14 @@ echo "---"
 
 # Show all upcoming tide events, one per line, rounded and cleaned, with color for readability
 echo "$upcoming_lines" | while IFS= read -r line; do
-  echo "$(round_depth_and_clean "$line")"
+  echo "$(round_depth_and_clean "$line") | bash=true terminal=false" # No action on click, just for formatting with color
 done
 
 echo "---"
-echo "Location: ${selected_title:-Unknown}"
-echo "---"
-echo "Change Location"
+echo "${selected_title:-Unknown} | bash=true terminal=false" # No action on click, just for formatting with color
 
+echo "--Refresh Locations | bash=\"$0\" param1=--refresh-locations terminal=false refresh=true"
+echo "-----"
 if [ -s "$LOCATIONS_FILE" ]; then
   while IFS=$'\t' read -r slug title; do
     [ -z "$slug" ] && continue
@@ -163,16 +163,14 @@ if [ -s "$LOCATIONS_FILE" ]; then
     if [ "$slug" = "$selected_slug" ]; then
       marker="✓ "
     fi
-    echo "${marker}${title} | bash=\"$0\" param1=--set-location param2=\"$slug\" terminal=false refresh=true"
+    echo "--${marker}${title} | bash=\"$0\" param1=--set-location param2=\"$slug\" terminal=false refresh=true"
   done < "$LOCATIONS_FILE"
 else
   echo "No locations available"
 fi
 
 echo "---"
-echo "Refresh Locations | bash=\"$0\" param1=--refresh-locations terminal=false refresh=true"
-echo "---"
 echo "Source: tidetimes.org.uk"
-echo "$RSS_URL | href=$RSS_URL"
+echo "tidetimes.org.uk/${selected_slug}-tide-times | href=https://www.tidetimes.org.uk/${selected_slug}-tide-times"
 echo "---"
 echo "Refresh | refresh=true"
