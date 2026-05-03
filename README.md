@@ -54,6 +54,6 @@ rm -rf ~/.config/tide-times-swiftbar
 - **curl** – for fetching data (standard on macOS)
 - **perl** – for text processing (standard on macOS)
 
-## License
+## Other
 
 This plugin is provided as-is for personal use with tidetimes.org.uk data.
