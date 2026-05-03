@@ -159,17 +159,9 @@ fi
 
 echo "---"
 
-# We are now in the dropdown menu. Show the current date at the top of the menu, e.g. "Monday 1 January 2024"
-echo "$(date +"%A %-d %B %Y") | bash=true terminal=false"
+# We are now in the dropdown menu
 
-# Show all upcoming tide events, one per line, rounded and cleaned, with color for readability
-# Also show time until the tide event, e.g. "in 1h 15m" or "in 45m"
-echo "$upcoming_lines" | while IFS= read -r line; do
-  echo "$(round_depth_and_clean_with_time_until "$line") | bash=true terminal=false" # No action on click, just for formatting with color
-done
-
-echo "---"
-echo "${selected_title:-Unknown} | bash=true terminal=false" # No action on click, just for formatting with color
+echo "**${selected_title:-Unknown}** | md=true bash=true terminal=false" # No action on click, just for formatting with color
 
 echo "--Refresh Locations | bash=\"$0\" param1=--refresh-locations terminal=false refresh=true"
 echo "-----"
@@ -185,6 +177,16 @@ if [ -s "$LOCATIONS_FILE" ]; then
 else
   echo "No locations available"
 fi
+
+# Show today's date in the menu, with color for readability
+echo "*$(date +"%A %-d %B %Y")* | md=true bash=true terminal=false"
+
+
+# Show all upcoming tide events, one per line, rounded and cleaned, with color for readability
+# Also show time until the tide event, e.g. "in 1h 15m" or "in 45m"
+echo "$upcoming_lines" | while IFS= read -r line; do
+  echo "$(round_depth_and_clean_with_time_until "$line") | bash=true terminal=false" # No action on click, just for formatting with color
+done
 
 echo "---"
 echo "Source: tidetimes.org.uk | href=https://www.tidetimes.org.uk/${selected_slug}-tide-times"
