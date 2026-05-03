@@ -140,14 +140,11 @@ round_depth_and_clean_with_time_until() {
   local time_until=""
   if [ $minutes_until -gt 0 ]; then
     local hours=$((minutes_until / 60))
-    local minutes=$((minutes_until % 60))
-    if [ $hours -gt 0 ]; then
-      time_until="${hours} hour$( [ $hours -gt 1 ] && echo "s" ) "
+    if [ $hours -eq 0 ]; then
+      time_until="- Soon"
+    else
+      time_until="- ${hours} hour$( [ $hours -gt 1 ] && echo "s" )"
     fi
-    if [ $minutes -gt 0 ] && [ $hours -lt 3 ]; then
-      time_until="${time_until}${minutes} minute$( [ $minutes -gt 1 ] && echo "s" )"
-    fi
-    time_until="- ${time_until}"
   fi
 
   echo "$(round_depth_and_clean "$line") $time_until"
