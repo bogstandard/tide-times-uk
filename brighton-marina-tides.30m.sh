@@ -129,6 +129,30 @@ round_depth_and_clean() {
     s/^([0-9]{2}:[0-9]{2}) - /$1 /'
 }
 
+round_depth_and_clean_with_time_until() {
+  local line="$1"
+  local tide_time=$(echo "$line" | grep -oE '^[0-9]{2}:[0-9]{2}')
+  local tide_hour=${tide_time%:*}
+  local tide_minute=${tide_time#*:}
+  local tide_minutes=$((10#$tide_hour * 60 + 10#$tide_minute))
+  local minutes_until=$((tide_minutes - now_minutes))
+
+  local time_until=""
+  if [ $minutes_until -gt 0 ]; then
+    local hours=$((minutes_until / 60))
+    local minutes=$((minutes_until % 60))
+    if [ $hours -gt 0 ]; then
+      time_until="${hours} hour$( [ $hours -gt 1 ] && echo "s" ) "
+    fi
+    if [ $minutes -gt 0 ] && [ $hours -lt 3 ]; then
+      time_until="${time_until}${minutes} minute$( [ $minutes -gt 1 ] && echo "s" )"
+    fi
+    time_until="- ${time_until}"
+  fi
+
+  echo "$(round_depth_and_clean "$line") $time_until"
+}
+
 # Show only the first upcoming tide event in the menu bar, rounded and cleaned
 topline=$(echo "$upcoming_lines" | head -1)
 if [ -n "$topline" ]; then
@@ -145,10 +169,13 @@ fi
 
 echo "---"
 
+# We are now in the dropdown menu. Show the current date at the top of the menu, e.g. "Monday 1 January 2024"
+echo "$(date +"%A %-d %B %Y") | bash=true terminal=false"
 
 # Show all upcoming tide events, one per line, rounded and cleaned, with color for readability
+# Also show time until the tide event, e.g. "in 1h 15m" or "in 45m"
 echo "$upcoming_lines" | while IFS= read -r line; do
-  echo "$(round_depth_and_clean "$line") | bash=true terminal=false" # No action on click, just for formatting with color
+  echo "$(round_depth_and_clean_with_time_until "$line") | bash=true terminal=false" # No action on click, just for formatting with color
 done
 
 echo "---"
@@ -170,7 +197,7 @@ else
 fi
 
 echo "---"
-echo "Source: tidetimes.org.uk"
-echo "tidetimes.org.uk/${selected_slug}-tide-times | href=https://www.tidetimes.org.uk/${selected_slug}-tide-times"
+echo "Source: tidetimes.org.uk | href=https://www.tidetimes.org.uk/${selected_slug}-tide-times"
+echo "Fetched: $(date +"%Y-%m-%d %H:%M:%S")"
 echo "---"
 echo "Refresh | refresh=true"
