@@ -175,7 +175,7 @@ else
   if [ -n "$first_upcoming" ]; then
     topline="$(round_depth_and_clean "$first_upcoming")"
   else
-    # If no upcoming, use the most recent past tide
+    # If no upcoming, use the most recent past tide (no 'gone' in topbar)
     if [ -n "$recent_past_line" ]; then
       topline="$(round_depth_and_clean "$recent_past_line")"
     else
@@ -226,8 +226,8 @@ if [ -n "$upcoming_lines" ]; then
     echo "$(round_depth_and_clean_with_time_until "$line") | bash=true terminal=false"
   done
 elif [ -n "$recent_past_line" ]; then
-  # Show the most recent past tide in the dropdown
-  echo "$(round_depth_and_clean "$recent_past_line") | bash=true terminal=false"
+  # Show the most recent past tide in the dropdown, with 'Concludes Today' appended
+  echo "$(round_depth_and_clean "$recent_past_line") - Concludes Today | bash=true terminal=false"
 fi
 
 echo "---"
