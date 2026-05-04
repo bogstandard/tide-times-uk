@@ -171,6 +171,14 @@ round_depth_and_clean_with_time_until() {
 }
 
 
+
+# Fetch windspeed for the selected location (UK only)
+WIND_PLACE="${selected_title:-Brighton Marina} UK"
+WIND_PLACE_ENCODED=$(echo "$WIND_PLACE" | sed 's/ /+/g')
+wind_raw=$(curl -s "wttr.in/${WIND_PLACE_ENCODED}?u&format=%w?")
+# Remove trailing % or ? and whitespace
+wind_clean=$(echo "$wind_raw" | sed 's/[?%].*$//' | tr -d '\n ')
+
 # Determine what to show in the menu bar (topline)
 topline=""
 
@@ -199,7 +207,12 @@ fi
 if [ -z "$(echo "$topline" | tr -d '[:space:]')" ]; then
   echo ":helm: ???"
 else
-  echo ":helm: $topline"
+  # Append windspeed if available and not empty, using '-' instead of '|'
+  if [ -n "$wind_clean" ]; then
+    echo ":helm: $topline ~ $wind_clean"
+  else
+    echo ":helm: $topline"
+  fi
 fi
 
 echo "---"
