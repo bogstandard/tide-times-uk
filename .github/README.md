@@ -8,12 +8,18 @@ A SwiftBar plugin that displays real-time tide information for UK coastal locati
 
 - **Multi-location support**: Switch between any UK tide locations
 - **Live tide data**: Fetches current and upcoming tide events from tidetimes.org.uk
+- **Wind speed display**: Shows current wind speed for your selected location (via wttr.in)
 - **Time-until indicator**: Shows "Soon" for tides within 1 hour, or hours for later tides
 - **Persistent selection**: Remembers your selected location across plugin refreshes
 - **Clean formatting**: 
   - Tide depth shown to 1 decimal place
   - High/Low tide displayed as ⬆/⬇ arrows
   - Current date displayed in menu
+  - Clickable links to tide and wind sources
+- **Menu options**:
+  - Refresh locations list
+  - Change location from dropdown
+- **Debugging/spoof time**: Option to spoof the current time for testing (edit `SPOOF_TIME` in the script)
 - **Updates every 30 minutes**: Automatic refresh via SwiftBar
 
 ## Installation
@@ -42,10 +48,17 @@ To reset everything:
 rm -rf ~/.config/tide-times-swiftbar
 ```
 
-## Data Source
+### Menu Options
+
+- **Refresh Locations**: Updates the list of available tide stations.
+- **Change Location**: Select a different tide station from the dropdown.
+- **Clickable Links**: Quick access to wind and tide data sources for your location.
+
+## Data Sources
 
 - **Tide data**: [tidetimes.org.uk](https://www.tidetimes.org.uk) (RSS feeds)
 - **Location list**: [tidetimes.org.uk/uk-tides](https://www.tidetimes.org.uk/uk-tides)
+- **Wind data**: [wttr.in](https://wttr.in)
 - **Supported locations**: 600+ UK tide stations including harbours, bays, and estuaries
 
 ## Requirements
@@ -56,4 +69,4 @@ rm -rf ~/.config/tide-times-swiftbar
 
 ## Other
 
-This plugin is provided as-is for personal use with tidetimes.org.uk data.
+This plugin is provided as-is for personal use with tidetimes.org.uk and wttr.in data.
