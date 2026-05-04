@@ -99,8 +99,12 @@ plain=$(echo "$desc" | sed 's/<[^>]*>//g' | sed '/^\s*$/d')
 now_minutes=$(date +"%H")
 now_minutes=$((10#$now_minutes * 60 + 10#$(date +"%M")))
 
-# Filter out past tide events
-upcoming_lines=$(echo "$plain" | grep -E '^[0-9]{2}:[0-9]{2}.*' | while IFS= read -r line; do
+
+
+# Filter out past tide events and remove empty lines
+all_tide_lines=$(echo "$plain" | grep -E '^[0-9]{2}:[0-9]{2}.*' | sed '/^\s*$/d')
+upcoming_lines=$(echo "$all_tide_lines" | while IFS= read -r line; do
+  [ -z "$(echo "$line" | tr -d '[:space:]')" ] && continue
   tide_time=$(echo "$line" | grep -oE '^[0-9]{2}:[0-9]{2}')
   tide_hour=${tide_time%:*}
   tide_minute=${tide_time#*:}
@@ -109,6 +113,18 @@ upcoming_lines=$(echo "$plain" | grep -E '^[0-9]{2}:[0-9]{2}.*' | while IFS= rea
     echo "$line"
   fi
 done)
+
+# Always compute the most recent past tide
+recent_past_line=$(echo "$all_tide_lines" | while IFS= read -r line; do
+  [ -z "$(echo "$line" | tr -d '[:space:]')" ] && continue
+  tide_time=$(echo "$line" | grep -oE '^[0-9]{2}:[0-9]{2}')
+  tide_hour=${tide_time%:*}
+  tide_minute=${tide_time#*:}
+  tide_minutes=$((10#$tide_hour * 60 + 10#$tide_minute))
+  if [ $tide_minutes -le $now_minutes ]; then
+    echo "$tide_minutes $line"
+  fi
+done | sort -n | tail -1 | cut -d' ' -f2-)
 
 
 # Function to round depth to 1 decimal place, remove 'Tide', and remove parentheses from depth
@@ -143,19 +159,39 @@ round_depth_and_clean_with_time_until() {
   echo "$(round_depth_and_clean "$line") $time_until"
 }
 
-# Show only the first upcoming tide event in the menu bar, rounded and cleaned
-topline=$(echo "$upcoming_lines" | head -1)
-if [ -n "$topline" ]; then
-  topline=$(round_depth_and_clean "$topline")
-fi
 
+# Determine what to show in the menu bar (topline)
+topline=""
 
-# Output for xbar/SwiftBar
-if [ -n "$topline" ]; then
-  echo ":helm: $topline"
+# Check if RSS feed is empty or missing
+if [ -z "$data" ] || ! echo "$data" | grep -q '<item>' ; then
+  topline="???"
 else
-  echo ":helm: ???"
+  # Try to get the first upcoming tide
+  first_upcoming=""
+  if IFS= read -r first_upcoming_line && [ -n "$first_upcoming_line" ]; then
+    first_upcoming="$first_upcoming_line"
+  fi <<< "$upcoming_lines"
+  if [ -n "$first_upcoming" ]; then
+    topline="$(round_depth_and_clean "$first_upcoming")"
+  else
+    # If no upcoming, use the most recent past tide
+    if [ -n "$recent_past_line" ]; then
+      topline="$(round_depth_and_clean "$recent_past_line")"
+    else
+      topline="???"
+    fi
+  fi
 fi
+
+# Output for xbar/SwiftBar (main menu bar)
+if [ -z "$(echo "$topline" | tr -d '[:space:]')" ]; then
+  echo ":helm: ???"
+else
+  echo ":helm: $topline"
+fi
+# Debug output for troubleshooting (remove after confirming fix)
+# echo "#DEBUG: topline='$topline' first_upcoming='$first_upcoming' recent_past_line='$recent_past_line'" >&2
 
 echo "---"
 
@@ -182,11 +218,17 @@ fi
 echo "*$(date +"%A %-d %B %Y")* | md=true bash=true terminal=false"
 
 
-# Show all upcoming tide events, one per line, rounded and cleaned, with color for readability
-# Also show time until the tide event, e.g. "in 1h 15m" or "in 45m"
-echo "$upcoming_lines" | while IFS= read -r line; do
-  echo "$(round_depth_and_clean_with_time_until "$line") | bash=true terminal=false" # No action on click, just for formatting with color
-done
+
+# Show all upcoming tide events, or if none, the most recent past tide
+if [ -n "$upcoming_lines" ]; then
+  echo "$upcoming_lines" | while IFS= read -r line; do
+    [ -z "$(echo "$line" | tr -d '[:space:]')" ] && continue
+    echo "$(round_depth_and_clean_with_time_until "$line") | bash=true terminal=false"
+  done
+elif [ -n "$recent_past_line" ]; then
+  # Show the most recent past tide in the dropdown
+  echo "$(round_depth_and_clean "$recent_past_line") | bash=true terminal=false"
+fi
 
 echo "---"
 echo "Source: tidetimes.org.uk | href=https://www.tidetimes.org.uk/${selected_slug}-tide-times"
