@@ -98,7 +98,7 @@ plain=$(echo "$desc" | sed 's/<[^>]*>//g' | sed '/^\s*$/d')
 
 # --- DEBUGGING: Set this to e.g. "14:30" to spoof the time of day ---
 # Leave empty to use the real current time
-SPOOF_TIME="12:00"
+SPOOF_TIME=""
 
 # Get current time in minutes since midnight, using spoof if set
 if [ -n "$SPOOF_TIME" ]; then
@@ -159,11 +159,11 @@ round_depth_and_clean_with_time_until() {
 
   local time_until=""
   if [ $minutes_until -gt 0 ]; then
-    local hours=$((minutes_until / 60))
-    if [ $hours -eq 0 ]; then
-      time_until="- Soon"
+    local hours=$(( (minutes_until + 30) / 60 ))
+    if [ $hours -gt 0 ]; then
+      time_until="~ ${hours} hour$( [ $hours -gt 1 ] && echo "s" )"
     else
-      time_until="- ${hours} hour$( [ $hours -gt 1 ] && echo "s" )"
+      time_until="~ Soon"
     fi
   fi
 
@@ -201,8 +201,6 @@ if [ -z "$(echo "$topline" | tr -d '[:space:]')" ]; then
 else
   echo ":helm: $topline"
 fi
-# Debug output for troubleshooting (remove after confirming fix)
-# echo "#DEBUG: topline='$topline' first_upcoming='$first_upcoming' recent_past_line='$recent_past_line'" >&2
 
 echo "---"
 
@@ -238,7 +236,7 @@ if [ -n "$upcoming_lines" ]; then
   done
 elif [ -n "$recent_past_line" ]; then
   # Show the most recent past tide in the dropdown, with 'Concludes Today' appended
-  echo "$(round_depth_and_clean "$recent_past_line") - Concludes Today | bash=true terminal=false"
+  echo "$(round_depth_and_clean "$recent_past_line") ~ Concludes Today | bash=true terminal=false"
 fi
 
 echo "---"
