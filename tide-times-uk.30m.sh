@@ -253,7 +253,8 @@ elif [ -n "$recent_past_line" ]; then
 fi
 
 echo "---"
-echo "Source: tidetimes.org.uk | href=https://www.tidetimes.org.uk/${selected_slug}-tide-times"
+echo "Wind: wttr.in (${WIND_PLACE:-Unknown}) | href=https://wttr.in/${WIND_PLACE_ENCODED}"
+echo "Tides: tidetimes.org.uk (${selected_title:-Unknown}) | href=https://www.tidetimes.org.uk/${selected_slug}-tide-times"
 echo "Fetched: $(date +"%Y-%m-%d %H:%M:%S")"
 echo "---"
 echo "Refresh | refresh=true"
