@@ -19,7 +19,7 @@ A SwiftBar plugin that displays real-time tide information for UK coastal locati
 ## Installation
 
 1. **Place the plugin in your SwiftBar plugins directory**:
-   - Download `tide-times.10s.sh` from this repository
+   - Download `tide-times-uk.30m.sh` from this repository
    - Move it to your SwiftBar plugins folder (e.g., `~/Library/Application Support/SwiftBar/Plugins/`)
 2. **Refresh SwiftBar** or restart it to pick up the new plugin
 
