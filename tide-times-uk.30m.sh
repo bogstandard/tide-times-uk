@@ -95,9 +95,20 @@ desc=$(echo "$desc" | perl -pe 's/&lt;br\/?&gt;|&lt;br&gt;|<br\/?\s*>/\n/gi; s/&
 plain=$(echo "$desc" | sed 's/<[^>]*>//g' | sed '/^\s*$/d')
 
 
-# Get current time in minutes since midnight
-now_minutes=$(date +"%H")
-now_minutes=$((10#$now_minutes * 60 + 10#$(date +"%M")))
+
+# --- DEBUGGING: Set this to e.g. "14:30" to spoof the time of day ---
+# Leave empty to use the real current time
+SPOOF_TIME="12:00"
+
+# Get current time in minutes since midnight, using spoof if set
+if [ -n "$SPOOF_TIME" ]; then
+  spoof_hour=${SPOOF_TIME%:*}
+  spoof_minute=${SPOOF_TIME#*:}
+  now_minutes=$((10#$spoof_hour * 60 + 10#$spoof_minute))
+else
+  now_minutes=$(date +"%H")
+  now_minutes=$((10#$now_minutes * 60 + 10#$(date +"%M")))
+fi
 
 
 
