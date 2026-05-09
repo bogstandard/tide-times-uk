@@ -185,6 +185,8 @@ topline=""
 # Check if RSS feed is empty or missing
 if [ -z "$data" ] || ! echo "$data" | grep -q '<item>' ; then
   topline="???"
+  # perform a refresh
+  build_locations_cache >/dev/null 2>&1 || true
 else
   # Try to get the first upcoming tide
   first_upcoming=""
