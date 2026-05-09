@@ -11,12 +11,16 @@
 set -u
 
 DEFAULT_SLUG="brighton-marina"
+SHIPPING_FORECAST_AREA="Viking" 
 LOCATIONS_PAGE_URL="https://www.tidetimes.org.uk/uk-tides"
 BASE_URL="https://www.tidetimes.org.uk"
+FORECAST_URL="https://www.metoffice.gov.uk/public/data/CoreProductCache/ShippingForecast/Latest"
 PLUGIN_DIR="$(cd "$(dirname "$0")" && pwd)"
 CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/tide-times-swiftbar"
 SELECTED_FILE="$CONFIG_DIR/selected-location"
 LOCATIONS_FILE="$CONFIG_DIR/locations.tsv"
+SHIPPING_FORECAST_CACHE="$CONFIG_DIR/shipping-forecast.xml"
+SELECTED_SHIPPING_FORECAST_FILE="$CONFIG_DIR/selected-shipping-forecast"
 
 mkdir -p "$CONFIG_DIR"
 
@@ -41,10 +45,85 @@ build_locations_cache() {
   return 1
 }
 
+parse_shipping_forecast() {
+  # Extract all area names and their forecasts from the XML.
+  # Multiline values are normalized to single-space strings.
+  local xml_file="$1"
+  [ ! -f "$xml_file" ] && return 1
+
+  perl -0777 -ne '
+    while (m{<area-forecast>(.*?)</area-forecast>}sg) {
+      my $block = $1;
+      my ($all) = $block =~ m{<all>\s*(.*?)\s*</all>}s;
+
+      # Limit value extraction to the top-level area-forecast fields.
+      my $top = $block;
+      $top =~ s{<area>.*$}{}s;
+
+      my ($wind) = $top =~ m{<wind>\s*(.*?)\s*</wind>}s;
+      my ($seastate) = $top =~ m{<seastate>\s*(.*?)\s*</seastate>}s;
+      my ($visibility) = $top =~ m{<visibility>\s*(.*?)\s*</visibility>}s;
+      my ($weather) = $top =~ m{<weather>\s*(.*?)\s*</weather>}s;
+
+      for ($all, $wind, $seastate, $visibility, $weather) {
+        $_ = "" unless defined $_;
+        s/[\r\n]+/ /g;
+        s/\s+/ /g;
+        s/^\s+|\s+$//g;
+        s/\t/ /g;
+      }
+
+      next if $all eq "";
+      print join("\t", $all, $wind, $seastate, $visibility, $weather), "\n";
+    }
+  ' "$xml_file"
+}
+
+build_shipping_forecast_cache() {
+  local shipping_areas_file="$CONFIG_DIR/shipping-forecast-areas.tsv"
+  
+  if curl -fsSL "$FORECAST_URL" -o "$SHIPPING_FORECAST_CACHE" && [ -s "$SHIPPING_FORECAST_CACHE" ]; then
+    # Parse the forecast and build the areas cache
+    if parse_shipping_forecast "$SHIPPING_FORECAST_CACHE" > "$shipping_areas_file.tmp" && [ -s "$shipping_areas_file.tmp" ]; then
+      mv "$shipping_areas_file.tmp" "$shipping_areas_file"
+      return 0
+    fi
+  fi
+  rm -f "$SHIPPING_FORECAST_CACHE"
+  return 1
+}
+
+build_shipping_areas_cache() {
+  local shipping_areas_file="$CONFIG_DIR/shipping-forecast-areas.tsv"
+  if [ -s "$SHIPPING_FORECAST_CACHE" ]; then
+    if parse_shipping_forecast "$SHIPPING_FORECAST_CACHE" > "$shipping_areas_file.tmp" && [ -s "$shipping_areas_file.tmp" ]; then
+      mv "$shipping_areas_file.tmp" "$shipping_areas_file"
+      return 0
+    fi
+  fi
+  return 1
+}
+
+get_shipping_forecast_for_area() {
+  # Get forecast data for a specific area
+  # Usage: get_shipping_forecast_for_area "area_name" "forecast_file"
+  local area="$1"
+  local forecast_file="$2"
+  [ ! -f "$forecast_file" ] && return 1
+  
+  awk -F '\t' -v area="$area" '$1 == area { print $2 "\t" $3 "\t" $4 "\t" $5; exit }' "$CONFIG_DIR/shipping-forecast-areas.tsv" 2>/dev/null
+}
+
 case "${1:-}" in
   --set-location)
     if [ -n "${2:-}" ]; then
       echo "$2" > "$SELECTED_FILE"
+    fi
+    exit 0
+    ;;
+  --set-shipping-forecast)
+    if [ -n "${2:-}" ]; then
+      echo "$2" > "$SELECTED_SHIPPING_FORECAST_FILE"
     fi
     exit 0
     ;;
@@ -53,15 +132,38 @@ case "${1:-}" in
     build_locations_cache >/dev/null 2>&1 || true
     exit 0
     ;;
+  --refresh-shipping-forecast)
+    rm -f "$SHIPPING_FORECAST_CACHE" "$CONFIG_DIR/shipping-forecast-areas.tsv"
+    build_shipping_forecast_cache >/dev/null 2>&1 || true
+    exit 0
+    ;;
 esac
 
 if [ ! -s "$LOCATIONS_FILE" ]; then
   build_locations_cache >/dev/null 2>&1 || true
 fi
 
+# Ensure shipping forecast cache exists
+SHIPPING_FORECAST_AREAS_FILE="$CONFIG_DIR/shipping-forecast-areas.tsv"
+if [ ! -s "$SHIPPING_FORECAST_CACHE" ]; then
+  build_shipping_forecast_cache >/dev/null 2>&1 || true
+fi
+
+# If we still don't have a cache, try to use sample data
+if [ ! -s "$SHIPPING_FORECAST_CACHE" ] && [ -f "$PLUGIN_DIR/sample-shipping-forecast-data.xml" ]; then
+  cp "$PLUGIN_DIR/sample-shipping-forecast-data.xml" "$SHIPPING_FORECAST_CACHE"
+  build_shipping_areas_cache >/dev/null 2>&1 || true
+fi
+
 selected_slug="$DEFAULT_SLUG"
 if [ -f "$SELECTED_FILE" ]; then
   selected_slug=$(tr -d '\r\n' < "$SELECTED_FILE")
+fi
+
+# Load selected shipping forecast area
+selected_shipping_area="$SHIPPING_FORECAST_AREA"
+if [ -f "$SELECTED_SHIPPING_FORECAST_FILE" ]; then
+  selected_shipping_area=$(tr -d '\r\n' < "$SELECTED_SHIPPING_FORECAST_FILE")
 fi
 
 if [ -s "$LOCATIONS_FILE" ]; then
@@ -109,8 +211,6 @@ else
   now_minutes=$(date +"%H")
   now_minutes=$((10#$now_minutes * 60 + 10#$(date +"%M")))
 fi
-
-
 
 # Filter out past tide events and remove empty lines
 all_tide_lines=$(echo "$plain" | grep -E '^[0-9]{2}:[0-9]{2}.*' | sed '/^\s*$/d')
@@ -238,25 +338,69 @@ else
   echo "No locations available"
 fi
 
+echo "-----"
+echo "**${selected_shipping_area}** | md=true bash=true terminal=false"
+echo "--Refresh Shipping Areas | bash=\"$0\" param1=--refresh-shipping-forecast terminal=false refresh=true"
+echo "-----"
+
+# Display shipping forecast areas
+if [ -s "$SHIPPING_FORECAST_AREAS_FILE" ]; then
+  while IFS=$'\t' read -r area wind seastate visibility weather; do
+    [ -z "$area" ] && continue
+    marker=""
+    if [ "$area" = "$selected_shipping_area" ]; then
+      marker="✓ "
+    fi
+    echo "--${marker}${area} | bash=\"$0\" param1=--set-shipping-forecast param2=\"$area\" terminal=false refresh=true"
+  done < "$SHIPPING_FORECAST_AREAS_FILE"
+else
+  echo "--No forecast areas available"
+fi
+
+echo "---"
+
 # Show today's date in the menu, with color for readability
 echo "*$(date +"%A %-d %B %Y")* | md=true bash=true terminal=false"
-
-
 
 # Show all upcoming tide events, or if none, the most recent past tide
 if [ -n "$upcoming_lines" ]; then
   echo "$upcoming_lines" | while IFS= read -r line; do
     [ -z "$(echo "$line" | tr -d '[:space:]')" ] && continue
-    echo "$(round_depth_and_clean_with_time_until "$line") | bash=true terminal=false"
+    echo ":helm: $(round_depth_and_clean_with_time_until "$line") | bash=true terminal=false"
   done
 elif [ -n "$recent_past_line" ]; then
   # Show the most recent past tide in the dropdown, with 'Concludes Today' appended
-  echo "$(round_depth_and_clean "$recent_past_line") ~ Concludes Today | bash=true terminal=false"
+  echo ":helm: $(round_depth_and_clean "$recent_past_line") ~ Concludes Today | bash=true terminal=false"
+fi
+
+echo "---"
+
+# Display forecast for selected shipping area
+if [ -s "$SHIPPING_FORECAST_AREAS_FILE" ]; then
+  forecast_data=$(awk -F '\t' -v area="$selected_shipping_area" '$1 == area { print $2 "\t" $3 "\t" $4 "\t" $5; exit }' "$SHIPPING_FORECAST_AREAS_FILE")
+  if [ -n "$forecast_data" ]; then
+    wind=$(echo "$forecast_data" | cut -f1)
+    seastate=$(echo "$forecast_data" | cut -f2)
+    visibility=$(echo "$forecast_data" | cut -f3)
+    weather=$(echo "$forecast_data" | cut -f4)
+
+    # Remove any leading/trailing whitespace from the forecast data
+    wind=$(echo "$wind" | sed 's/^[ \t]*//;s/[ \t]*$//')
+    seastate=$(echo "$seastate" | sed 's/^[ \t]*//;s/[ \t]*$//')
+    visibility=$(echo "$visibility" | sed 's/^[ \t]*//;s/[ \t]*$//')
+    weather=$(echo "$weather" | sed 's/^[ \t]*//;s/[ \t]*$//')
+    
+    echo "*:wind:* $wind | md=true bash=true terminal=false"
+    echo "*:waveform.path.ecg:* $seastate | md=true bash=true terminal=false"
+    echo "*:eye:* $visibility | md=true bash=true terminal=false"
+    echo "*:sun.max:* $weather | md=true bash=true terminal=false"
+  fi
 fi
 
 echo "---"
 echo "Wind: wttr.in (${WIND_PLACE:-Unknown}) | href=https://wttr.in/${WIND_PLACE_ENCODED}"
 echo "Tides: tidetimes.org.uk (${selected_title:-Unknown}) | href=https://www.tidetimes.org.uk/${selected_slug}-tide-times"
+echo "Shipping Forecast: Met Office (${selected_shipping_area}) | href=https://www.metoffice.gov.uk/public/data/CoreProductCache/ShippingForecast/Latest"
 echo "Fetched: $(date +"%Y-%m-%d %H:%M:%S")"
 echo "---"
 echo "Refresh | refresh=true"
