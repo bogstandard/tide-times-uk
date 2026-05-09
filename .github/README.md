@@ -2,6 +2,8 @@
 
 This SwiftBar plugin displays UK tide times and now includes the latest UK Shipping Forecast.
 
+![Screenshot of the plugin showing tide times and Shipping Forecast](screenshot.png)
+
 ## Features
 
 - Shows today's tide times for your selected UK location (from tidetimes.org.uk)
