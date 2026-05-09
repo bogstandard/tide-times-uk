@@ -392,7 +392,7 @@ if [ -s "$SHIPPING_FORECAST_AREAS_FILE" ]; then
     
     echo "*:wind:* $wind | md=true bash=true terminal=false"
     echo "*:waveform.path.ecg:* $seastate | md=true bash=true terminal=false"
-    echo "*:eye:* $visibility | md=true bash=true terminal=false"
+    echo "*:paintbrush:* $visibility | md=true bash=true terminal=false"
     echo "*:sun.max:* $weather | md=true bash=true terminal=false"
   fi
 fi
