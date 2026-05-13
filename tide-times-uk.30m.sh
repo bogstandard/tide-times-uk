@@ -184,8 +184,21 @@ fi
 
 RSS_URL="$BASE_URL/$selected_slug-tide-times.rss"
 
-# Fetch the RSS feed
-data=$(curl -s "$RSS_URL")
+# Cache file for today's RSS data (keyed by slug + date so it's always fresh)
+TODAY=$(date +"%Y-%m-%d")
+RSS_CACHE_FILE="$CONFIG_DIR/rss-${selected_slug}-${TODAY}.cache"
+# Clean up stale caches from previous days
+find "$CONFIG_DIR" -maxdepth 1 -name "rss-*.cache" ! -name "rss-${selected_slug}-${TODAY}.cache" -delete 2>/dev/null || true
+
+# Fetch the RSS feed, falling back to today's cache if the network is unavailable
+data=$(curl -s --max-time 10 "$RSS_URL")
+if echo "$data" | grep -q '<item>'; then
+  # Successful fetch — update the cache
+  echo "$data" > "$RSS_CACHE_FILE"
+elif [ -s "$RSS_CACHE_FILE" ]; then
+  # Network unavailable but we have today's cache — use it and schedule a refresh
+  data=$(cat "$RSS_CACHE_FILE")
+fi
 
 # Extract the <description> from the first <item>
 desc=$(echo "$data" | awk 'BEGIN{RS="<item>";FS="</item>"} NR==2{print $1}' | grep -o '<description>.*</description>' | sed 's/<\/?description>//g')
