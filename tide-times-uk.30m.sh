@@ -74,7 +74,14 @@ parse_shipping_forecast() {
       }
 
       next if $all eq "";
-      print join("\t", $all, $wind, $seastate, $visibility, $weather), "\n";
+
+      # Some forecasts group areas in <all>, e.g. "Viking, North Utsire, South Utsire".
+      # Emit one row per area so menu selection remains granular.
+      my @areas = split(/\s*,\s*/, $all);
+      for my $area (@areas) {
+        next if !defined $area || $area eq "";
+        print join("\t", $area, $wind, $seastate, $visibility, $weather), "\n";
+      }
     }
   ' "$xml_file"
 }
@@ -101,6 +108,36 @@ build_shipping_areas_cache() {
       return 0
     fi
   fi
+  return 1
+}
+
+normalize_shipping_areas_cache() {
+  local shipping_areas_file="$CONFIG_DIR/shipping-forecast-areas.tsv"
+  local tmp_file
+
+  [ ! -s "$shipping_areas_file" ] && return 1
+
+  tmp_file=$(mktemp)
+  if awk -F '\t' 'BEGIN { OFS = "\t" }
+    NF >= 5 {
+      n = split($1, areas, /,[[:space:]]*/)
+      for (i = 1; i <= n; i++) {
+        area = areas[i]
+        gsub(/^[[:space:]]+|[[:space:]]+$/, "", area)
+        if (area == "") {
+          continue
+        }
+        if (!seen[area]++) {
+          print area, $2, $3, $4, $5
+        }
+      }
+    }
+  ' "$shipping_areas_file" > "$tmp_file" && [ -s "$tmp_file" ]; then
+    mv "$tmp_file" "$shipping_areas_file"
+    return 0
+  fi
+
+  rm -f "$tmp_file"
   return 1
 }
 
@@ -154,6 +191,9 @@ if [ ! -s "$SHIPPING_FORECAST_CACHE" ] && [ -f "$PLUGIN_DIR/sample-shipping-fore
   cp "$PLUGIN_DIR/sample-shipping-forecast-data.xml" "$SHIPPING_FORECAST_CACHE"
   build_shipping_areas_cache >/dev/null 2>&1 || true
 fi
+
+# Ensure area list is granular even if an older cache contains grouped names.
+normalize_shipping_areas_cache >/dev/null 2>&1 || true
 
 selected_slug="$DEFAULT_SLUG"
 if [ -f "$SELECTED_FILE" ]; then
