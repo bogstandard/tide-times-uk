@@ -449,6 +449,25 @@ if [ -s "$SHIPPING_FORECAST_AREAS_FILE" ]; then
     [ -n "$visibility" ] && [[ ! "$visibility" =~ [\.\!]$ ]] && visibility="$visibility."
     [ -n "$weather" ] && [[ ! "$weather" =~ [\.\!]$ ]] && weather="$weather."
     
+    # Replace North with N, East with E, South with S, West with W, Northwest with NW, Northeast with NE, Southwest with SW, Southeast with SE
+    replacements=(
+      "Northwest:NW"
+      "Northeast:NE"
+      "Southwest:SW"
+      "Southeast:SE"
+      "North:N"
+      "East:E"
+      "South:S"
+      "West:W"
+    )
+    for replacement in "${replacements[@]}"; do
+      IFS=':' read -r long short <<< "$replacement"
+      wind=$(echo "$wind" | sed "s/[[:<:]]$long[[:>:]]/$short/g")
+      seastate=$(echo "$seastate" | sed "s/[[:<:]]$long[[:>:]]/$short/g")
+      visibility=$(echo "$visibility" | sed "s/[[:<:]]$long[[:>:]]/$short/g")
+      weather=$(echo "$weather" | sed "s/[[:<:]]$long[[:>:]]/$short/g")
+    done
+
     echo "*:wind:* $wind | md=true bash=true terminal=false"
     echo "*:waveform.path.ecg:* $seastate | md=true bash=true terminal=false"
     echo "*:paintbrush:* $visibility | md=true bash=true terminal=false"
