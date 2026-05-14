@@ -442,6 +442,12 @@ if [ -s "$SHIPPING_FORECAST_AREAS_FILE" ]; then
     seastate=$(echo "$seastate" | sed 's/^[ \t]*//;s/[ \t]*$//')
     visibility=$(echo "$visibility" | sed 's/^[ \t]*//;s/[ \t]*$//')
     weather=$(echo "$weather" | sed 's/^[ \t]*//;s/[ \t]*$//')
+
+    # add fullstop to end of string if not already present
+    [ -n "$wind" ] && [[ ! "$wind" =~ [\.\!]$ ]] && wind="$wind."
+    [ -n "$seastate" ] && [[ ! "$seastate" =~ [\.\!]$ ]] && seastate="$seastate."
+    [ -n "$visibility" ] && [[ ! "$visibility" =~ [\.\!]$ ]] && visibility="$visibility."
+    [ -n "$weather" ] && [[ ! "$weather" =~ [\.\!]$ ]] && weather="$weather."
     
     echo "*:wind:* $wind | md=true bash=true terminal=false"
     echo "*:waveform.path.ecg:* $seastate | md=true bash=true terminal=false"
