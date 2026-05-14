@@ -364,7 +364,7 @@ if [ -z "$(echo "$topline" | tr -d '[:space:]')" ]; then
 else
   # Append windspeed if available and not empty, using '-' instead of '|'
   if [ -n "$wind_clean" ]; then
-    echo ":helm: $topline ~ $wind_clean"
+    echo ":helm: $topline $wind_clean"
   else
     echo ":helm: $topline"
   fi
