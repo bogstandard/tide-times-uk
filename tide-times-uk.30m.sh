@@ -452,13 +452,21 @@ if [ -s "$SHIPPING_FORECAST_AREAS_FILE" ]; then
     # Replace North with N, East with E, South with S, West with W, Northwest with NW, Northeast with NE, Southwest with SW, Southeast with SE
     replacements=(
       "Northwest:NW"
+      "northwest:NW"
       "Northeast:NE"
+      "northeast:NE"
       "Southwest:SW"
+      "southwest:SW"
       "Southeast:SE"
+      "southeast:SE"
       "North:N"
+      "north:N"
       "East:E"
+      "east:E"
       "South:S"
+      "south:S"
       "West:W"
+      "west:W"
     )
     for replacement in "${replacements[@]}"; do
       IFS=':' read -r long short <<< "$replacement"
